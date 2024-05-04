@@ -1,0 +1,32 @@
+
+datasets download genome accession GCA_013400835.1 --include gff3,rna,cds,protein,genome,seq-report
+
+mkdir /2/scratch/QuinlanMann/FASTQ/BAMFILES2
+
+cd /2/scratch/QuinlanMann/FASTQ/BAMFILES2
+
+bwa mem -t 8 /2/scratch/QuinlanMann/FASTQ/ncbi_dataset/data/GCA_013400835.1/GCA_013400835.1_ASM1340083v1_genomic.fna /2/scratch/QuinlanMann/FASTQ/Unzip/1A_Tawharanui_S1_L001_R1_001.fastq /2/scratch/QuinlanMann/FASTQ/Unzip/1A_Tawharanui_S1_L001_R2_001.fastq | samtools view -Shu - | samtools sort - -o 1A_Tawharanui_S1_L001_sorted.bam
+
+bwa mem -t 10 /2/scratch/QuinlanMann/FASTQ/ncbi_dataset/data/GCA_013400835.1/GCA_013400835.1_ASM1340083v1_genomic.fna /2/scratch/QuinlanMann/FASTQ/Unzip/2B_Shakespear_S2_L001_R1_001.fastq /2/scratch/QuinlanMann/FASTQ/Unzip/2B_Shakespear_S2_L001_R2_001.fastq | samtools view -Shu - | samtools sort - -o 2B_Shakespear_S2_L001_sorted2.bam
+
+bwa mem -t 10 /2/scratch/QuinlanMann/FASTQ/ncbi_dataset/data/GCA_013400835.1/GCA_013400835.1_ASM1340083v1_genomic.fna  /2/scratch/QuinlanMann/FASTQ/Unzip/3C_South_Island_S3_L001_R1_001.fastq /2/scratch/QuinlanMann/FASTQ/Unzip/3C_South_Island_S3_L001_R1_001.fastq | samtools view -Shu - | samtools sort - -o 3C_South_Island_S3_L001_sorted2.bam
+
+samtools depth 1A_Tawharanui_S1_L001_sorted.bam | awk '{sum+=$3} END { print "Average = ",sum/NR}'
+Average =  30.3085
+
+samtools depth 2B_Shakespear_S2_L001_sorted2.bam | awk '{sum+=$3} END { print "Average = ",sum/NR}'
+Average =  34.7493
+
+samtools depth 3C_South_Island_S3_L001_sorted2.bam | awk '{sum+=$3} END { print "Average = ",sum/NR}'
+Average =  39.7225
+
+bcftools mpileup -f ../ncbi_dataset/data/GCA_013400835.1/GCA_013400835.1_ASM1340083v1_genomic.fna 1A_Tawharanui_S1_L001_sorted2.bam 2B_Shakespear_S2_L001_sorted2.bam 3C_South_Island_S3_L001_sorted2.bam | bcftools call -V indels --format-fields GQ -m -O z -o allsamples_merged_sorted2.bam.vcf.gz
+
+vcftools --gzvcf allsamples_merged_sorted2/allsamples_merged_sorted2.bam.vcf.gz --weir-fst-pop NORTH --weir-fst-pop SOUTH --out pop1_vs_pop2
+
+awk '!/-nan/' pop1_vs_pop2.weir.fst > pop1_vs_pop2.weir.2.fst
+
+cat out pop1_vs_pop2.weir.2.fst | awk 'BEGIN {srand()} !/^$/ { if (rand() <= .1) print $0}' > sample2.txt
+
+vcftools --gzvcf allsamples_merged_sorted2/allsamples_merged_sorted2.bam.vcf.gz --window-pi 10000 --out allsamples_merged_sorted2.pi
+
